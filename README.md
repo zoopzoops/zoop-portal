@@ -35,7 +35,7 @@ Create a `docker-compose.yml`:
 ```yaml
 services:
   zoop-portal:
-    image: yourdockerhub/zoop-portal:latest
+    image: zoopzoop/zoop-portal:latest
     container_name: zoop-portal
     ports:
       - "8888:8888"
