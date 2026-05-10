@@ -1,0 +1,685 @@
+{% extends "base.html" %}
+
+{% block title %}Zoop Portal — Dashboard{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        cursor: pointer;
+        transition: border-color 0.15s;
+    }
+
+    .stat-card:hover { border-color: var(--accent); }
+    .stat-card.active { border-color: var(--accent); background: var(--accent-glow); }
+
+    .stat-label {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 0.3rem;
+    }
+
+    .stat-value {
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 1.75rem;
+        letter-spacing: -0.03em;
+    }
+
+    .request-form {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    .filter-bar {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-input {
+        flex: 1;
+        min-width: 200px;
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.5rem 0.8rem;
+        color: var(--text);
+        font-family: 'DM Mono', monospace;
+        font-size: 0.82rem;
+        outline: none;
+        transition: border-color 0.15s;
+    }
+
+    .filter-input:focus { border-color: var(--accent); }
+
+    .filter-btn {
+        padding: 0.5rem 0.8rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        color: var(--text-muted);
+        font-family: 'DM Mono', monospace;
+        transition: all 0.15s;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-glow);
+    }
+
+    .results-count {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-left: auto;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .title-cell {
+        font-weight: 500;
+        color: var(--text);
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .link-cell a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.75rem;
+    }
+
+    .link-cell a:hover { color: var(--accent); }
+
+    .requester-cell {
+        color: var(--text-dim);
+        font-size: 0.78rem;
+    }
+
+    .date-cell {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    tr.hidden-row { display: none; }
+
+    .season-pill-wrap {
+        position: relative;
+        display: inline-block;
+    }
+
+    .season-pill {
+        display: inline-block;
+        background: var(--accent-glow);
+        border: 1px solid rgba(59,130,246,0.3);
+        color: var(--accent);
+        border-radius: 4px;
+        padding: 0.15rem 0.5rem;
+        font-size: 0.72rem;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s;
+        user-select: none;
+    }
+
+    .season-pill:hover { background: rgba(59,130,246,0.2); }
+
+    .season-pill-popover {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 500;
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.6rem 0.8rem;
+        font-size: 0.78rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        min-width: 120px;
+    }
+
+    .season-pill-popover.open { display: block; }
+
+    @media (max-width: 768px) {
+        .stats { grid-template-columns: repeat(2, 1fr); }
+        .request-form { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Requests</h1>
+    <p>Submit and track media requests</p>
+</div>
+
+{% if success %}
+<div class="alert alert-success">{{ success }}</div>
+{% endif %}
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<!-- Stats -->
+<div class="stats">
+    <div class="stat-card" onclick="filterByStatus('')" id="stat-all">
+        <div class="stat-label">Total</div>
+        <div class="stat-value">{{ requests|length }}</div>
+    </div>
+    <div class="stat-card" onclick="filterByStatus('pending')" id="stat-pending">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value" style="color: var(--pending)">{{ requests|selectattr('status', 'eq', 'pending')|list|length }}</div>
+    </div>
+    <div class="stat-card" onclick="filterByStatus('approved')" id="stat-approved">
+        <div class="stat-label">Approved</div>
+        <div class="stat-value" style="color: var(--approved)">{{ requests|selectattr('status', 'eq', 'approved')|list|length }}</div>
+    </div>
+    <div class="stat-card" onclick="filterByStatus('rejected')" id="stat-rejected">
+        <div class="stat-label">Rejected</div>
+        <div class="stat-value" style="color: var(--rejected)">{{ requests|selectattr('status', 'eq', 'rejected')|list|length }}</div>
+    </div>
+</div>
+
+<!-- Submit Request -->
+<div class="card">
+    <div class="card-title">New Request</div>
+    <form id="request-form" method="post" action="/request">
+        <input type="hidden" name="seasons" id="seasons-input" value="all">
+        <div class="request-form">
+            <div class="form-group" style="margin-bottom: 0">
+                <label class="form-label">IMDB Link</label>
+                <input type="url" name="link" id="link-input" class="form-input" placeholder="https://www.imdb.com/title/tt..." required>
+            </div>
+            <div class="form-group" style="margin-bottom: 0">
+                <label class="form-label">&nbsp;</label>
+                <button type="button" class="btn btn-primary" onclick="handleSubmit()">Submit</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Season Picker Modal -->
+<div id="season-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:2rem; max-width:500px; width:90%; max-height:80vh; overflow-y:auto;">
+        <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:1.2rem; margin-bottom:0.25rem" id="modal-title">Select Seasons</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1.5rem" id="modal-subtitle"></div>
+
+        <!-- Mode selector -->
+        <div style="display:flex; flex-direction:column; gap:0.6rem; margin-bottom:1.25rem;">
+            <label style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; border:1px solid var(--border); border-radius:8px; cursor:pointer; transition:border-color 0.15s;" id="mode-all-label">
+                <input type="radio" name="season-mode" value="all" checked onchange="updateMode(this.value)" style="accent-color:var(--accent)">
+                <div>
+                    <div style="font-size:0.85rem; font-weight:500">All Seasons</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted)">Download everything available</div>
+                </div>
+            </label>
+            <label style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; border:1px solid var(--border); border-radius:8px; cursor:pointer; transition:border-color 0.15s;" id="mode-specific-label">
+                <input type="radio" name="season-mode" value="specific" onchange="updateMode(this.value)" style="accent-color:var(--accent)">
+                <div>
+                    <div style="font-size:0.85rem; font-weight:500">Specific Seasons</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted)">Choose which seasons to download</div>
+                </div>
+            </label>
+            <label style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; border:1px solid var(--border); border-radius:8px; cursor:pointer; transition:border-color 0.15s;" id="mode-new-label">
+                <input type="radio" name="season-mode" value="new" onchange="updateMode(this.value)" style="accent-color:var(--accent)">
+                <div>
+                    <div style="font-size:0.85rem; font-weight:500">New Episodes Only</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted)">Monitor for future episodes only, skip existing seasons</div>
+                </div>
+            </label>
+        </div>
+
+        <!-- Season checkboxes -->
+        <div id="season-checkboxes" style="display:none; margin-bottom:1.25rem;">
+            <div style="font-size:0.72rem; color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.6rem;">Select Seasons</div>
+            <div id="season-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:0.5rem;"></div>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+            <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="confirmRequest()">Confirm Request</button>
+        </div>
+    </div>
+</div>
+
+<!-- Requests Table -->
+<div class="card">
+    <div class="card-title">All Requests</div>
+    {% if requests %}
+    <div class="filter-bar">
+        <input type="text" class="filter-input" id="search-input" placeholder="Search by title or user..." oninput="applyFilters()">
+        <button class="filter-btn active" id="btn-all" onclick="filterByType('', this)">All</button>
+        <button class="filter-btn" id="btn-movie" onclick="filterByType('movie', this)">Movies</button>
+        <button class="filter-btn" id="btn-show" onclick="filterByType('show', this)">Shows</button>
+        <span class="results-count" id="results-count"></span>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Seasons</th>
+                <th>Status</th>
+                <th>Requested By</th>
+                <th>Link</th>
+                <th>Date</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="requests-tbody">
+            {% for req in requests %}
+            <tr data-title="{{ req.title|lower }}"
+                data-user="{{ req.user.username|lower }}"
+                data-type="{{ req.media_type }}"
+                data-status="{{ req.status }}">
+                <td class="title-cell" title="{{ req.title }}">{{ req.title }}</td>
+                <td><span class="badge badge-{{ req.media_type }}">{{ req.media_type }}</span></td>
+                <td style="font-size:0.75rem; color:var(--text-muted)">
+                    {% if req.media_type == 'show' %}
+                        {% if not req.seasons or req.seasons == 'all' %}
+                            <div class="season-pill-wrap">
+                                <span class="season-pill" onclick="event.stopPropagation(); toggleSeasonPill(this)">All ▾</span>
+                                <div class="season-pill-popover">All seasons monitored</div>
+                            </div>
+                        {% elif req.seasons == 'new' %}
+                            <span style="color:var(--success)">New only</span>
+                        {% else %}
+                            {% set season_nums = req.seasons | replace('[','') | replace(']','') | replace('"','') %}
+                            <div class="season-pill-wrap">
+                                <span class="season-pill" onclick="event.stopPropagation(); toggleSeasonPill(this)">Seasons ▾</span>
+                                <div class="season-pill-popover">S{{ season_nums }}</div>
+                            </div>
+                        {% endif %}
+                    {% else %}—{% endif %}
+                </td>
+                <td><span class="badge badge-{{ req.status }}">{{ req.status }}</span></td>
+                <td class="requester-cell">{{ req.user.username }}</td>
+                <td class="link-cell"><a href="{{ req.link }}" target="_blank">↗ view</a></td>
+                <td class="date-cell">{{ req.created_at.strftime('%b %d, %Y') }}</td>
+                <td>
+                    {% if req.media_type == 'show' and req.imdb_id and req.status == 'approved' %}
+                    <button class="btn btn-ghost" style="font-size:0.72rem; padding:0.3rem 0.6rem;"
+                        data-imdb="{{ req.imdb_id }}"
+                        data-title="{{ req.title | e }}"
+                        data-reqid="{{ req.id }}"
+                        onclick="openUpdateModal(this.dataset.imdb, this.dataset.title, this.dataset.reqid)">
+                        Manage
+                    </button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div id="no-results" style="display:none" class="empty-state">No requests match your search.</div>
+    {% else %}
+    <div class="empty-state">No requests yet. Submit the first one above!</div>
+    {% endif %}
+</div>
+
+<script>
+let activeType = '';
+let activeStatus = '';
+let currentSeasons = [];
+
+function toggleSeasonPill(pill) {
+    const popover = pill.nextElementSibling;
+    const isOpen = popover.classList.contains('open');
+    // Close all other popovers first
+    document.querySelectorAll('.season-pill-popover.open').forEach(p => p.classList.remove('open'));
+    if (!isOpen) popover.classList.add('open');
+}
+
+// Close popovers when clicking elsewhere
+document.addEventListener('click', () => {
+    document.querySelectorAll('.season-pill-popover.open').forEach(p => p.classList.remove('open'));
+});
+
+// ── Season picker ──
+async function handleSubmit() {
+    const link = document.getElementById('link-input').value.trim();
+    if (!link) return;
+
+    const match = link.match(/imdb\.com\/title\/(tt\d+)/);
+    if (!match) {
+        alert('Please enter a valid IMDB link.');
+        return;
+    }
+
+    const imdbId = match[1];
+
+    try {
+        const res = await fetch(`/api/lookup?imdb_id=${imdbId}`);
+        const data = await res.json();
+
+        if (data.error) {
+            alert('Could not find this title. Please check the link.');
+            return;
+        }
+
+        if (data.type === 'movie') {
+            // Movies go straight through
+            document.getElementById('seasons-input').value = 'all';
+            document.getElementById('request-form').submit();
+            return;
+        }
+
+        // Show is a show — open the season picker
+        currentSeasons = data.seasons || [];
+        document.getElementById('modal-title').textContent = `${data.title} (${data.year})`;
+        document.getElementById('modal-subtitle').textContent = `${currentSeasons.length} season${currentSeasons.length !== 1 ? 's' : ''} available`;
+
+        // Build season checkboxes
+        const list = document.getElementById('season-list');
+        list.innerHTML = '';
+        currentSeasons.forEach(s => {
+            const label = document.createElement('label');
+            label.style.cssText = 'display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.75rem; background:var(--bg3); border:1px solid var(--border); border-radius:6px; cursor:pointer; font-size:0.82rem;';
+            const epInfo = s.episode_count > 0 ? ` <span style="color:var(--text-muted); font-size:0.72rem">(${s.episode_count} ep)</span>` : '';
+            label.innerHTML = `
+                <input type="checkbox" value="${s.number}" checked style="accent-color:var(--accent)">
+                Season ${s.number}${epInfo}
+            `;
+            list.appendChild(label);
+        });
+
+        // Reset mode
+        document.querySelector('input[name="season-mode"][value="all"]').checked = true;
+        updateMode('all');
+
+        // Show modal
+        const modal = document.getElementById('season-modal');
+        modal.style.display = 'flex';
+
+    } catch (err) {
+        console.error(err);
+        alert('Something went wrong. Please try again.');
+    }
+}
+
+function updateMode(mode) {
+    const checkboxes = document.getElementById('season-checkboxes');
+    checkboxes.style.display = mode === 'specific' ? 'block' : 'none';
+
+    // Highlight active mode
+    ['all', 'specific', 'new'].forEach(m => {
+        const label = document.getElementById(`mode-${m}-label`);
+        label.style.borderColor = mode === m ? 'var(--accent)' : 'var(--border)';
+        label.style.background = mode === m ? 'var(--accent-glow)' : 'transparent';
+    });
+}
+
+function closeModal() {
+    document.getElementById('season-modal').style.display = 'none';
+}
+
+function confirmRequest() {
+    const mode = document.querySelector('input[name="season-mode"]:checked').value;
+    let seasonsValue = 'all';
+
+    if (mode === 'new') {
+        seasonsValue = 'new';
+    } else if (mode === 'specific') {
+        const checked = [...document.querySelectorAll('#season-list input:checked')].map(i => parseInt(i.value));
+        if (checked.length === 0) {
+            alert('Please select at least one season.');
+            return;
+        }
+        seasonsValue = JSON.stringify(checked);
+    }
+
+    document.getElementById('seasons-input').value = seasonsValue;
+    closeModal();
+    document.getElementById('request-form').submit();
+}
+
+// Close modal on backdrop click
+document.getElementById('season-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// ── Filters ──
+function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const rows = document.querySelectorAll('#requests-tbody tr');
+    let visible = 0;
+
+    rows.forEach(row => {
+        const title = row.dataset.title || '';
+        const user = row.dataset.user || '';
+        const type = row.dataset.type || '';
+        const status = row.dataset.status || '';
+
+        const matchesSearch = !search || title.includes(search) || user.includes(search);
+        const matchesType = !activeType || type === activeType;
+        const matchesStatus = !activeStatus || status === activeStatus;
+
+        if (matchesSearch && matchesType && matchesStatus) {
+            row.classList.remove('hidden-row');
+            visible++;
+        } else {
+            row.classList.add('hidden-row');
+        }
+    });
+
+    const total = rows.length;
+    const countEl = document.getElementById('results-count');
+    countEl.textContent = visible < total ? `${visible} of ${total} shown` : '';
+
+    const noResults = document.getElementById('no-results');
+    if (noResults) noResults.style.display = visible === 0 ? 'block' : 'none';
+}
+
+function filterByType(type, btn) {
+    activeType = type;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+}
+
+function filterByStatus(status) {
+    activeStatus = status;
+    document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+    const map = { '': 'stat-all', 'pending': 'stat-pending', 'approved': 'stat-approved', 'rejected': 'stat-rejected' };
+    if (map[status]) document.getElementById(map[status]).classList.add('active');
+    applyFilters();
+}
+
+applyFilters();
+</script>
+
+<!-- Update Seasons Modal -->
+<div id="update-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:2rem; max-width:500px; width:90%; max-height:85vh; display:flex; flex-direction:column;">
+        <div style="font-family:'Syne',sans-serif; font-weight:800; font-size:1.2rem; margin-bottom:0.25rem" id="update-modal-title">Manage Show</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1.5rem">Toggle season monitoring or add new seasons</div>
+
+        <div id="update-modal-loading" style="text-align:center; padding:2rem; color:var(--text-muted)">Loading season data...</div>
+
+        <div id="update-modal-content" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem; background:var(--bg3); border:1px solid var(--border); border-radius:8px; margin-bottom:1.25rem; flex-shrink:0;">
+                <div>
+                    <div style="font-size:0.85rem; font-weight:500">Monitor New Episodes</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted)">Automatically grab new episodes as they air</div>
+                </div>
+                <label style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer; flex-shrink:0;">
+                    <input type="checkbox" id="monitor-new-toggle" style="opacity:0; width:0; height:0;">
+                    <span id="toggle-track" style="position:absolute; top:0; left:0; right:0; bottom:0; background:var(--border); border-radius:12px; transition:0.2s;"></span>
+                    <span id="toggle-thumb" style="position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.2s;"></span>
+                </label>
+            </div>
+
+            <div style="font-size:0.72rem; color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:0.6rem; flex-shrink:0; display:flex; align-items:center; justify-content:space-between;">
+                <span>Seasons</span>
+                <div style="display:flex; gap:0.4rem;">
+                    <button type="button" class="btn btn-ghost" style="font-size:0.7rem; padding:0.2rem 0.6rem;" onclick="selectAllSeasons(true)">Select All</button>
+                    <button type="button" class="btn btn-ghost" style="font-size:0.7rem; padding:0.2rem 0.6rem;" onclick="selectAllSeasons(false)">None</button>
+                </div>
+            </div>
+            <div id="update-season-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:0.5rem; overflow-y:auto; margin-bottom:1.5rem; padding-right:0.25rem; max-height:300px;"></div>
+
+            <div style="display:flex; gap:0.5rem; justify-content:flex-end; flex-shrink:0; padding-top:0.5rem; border-top:1px solid var(--border);">
+                <button type="button" class="btn btn-ghost" onclick="closeUpdateModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="update-confirm-btn" onclick="confirmUpdate()">Save Changes</button>
+            </div>
+        </div>
+
+        <div id="update-modal-error" style="display:none; color:var(--danger); font-size:0.85rem; text-align:center; padding:1rem;"></div>
+    </div>
+</div>
+
+<script>
+let currentUpdateImdbId = null;
+let currentUpdateRequestId = null;
+let originalSeasons = [];
+
+function selectAllSeasons(checked) {
+    document.querySelectorAll('#update-season-list input[type="checkbox"]').forEach(cb => {
+        cb.checked = checked;
+        cb.closest('label').style.borderColor = checked ? 'var(--accent)' : 'var(--border)';
+    });
+}
+
+async function openUpdateModal(imdbId, title, requestId) {
+    currentUpdateImdbId = imdbId;
+    currentUpdateRequestId = requestId;
+    document.getElementById('update-modal-title').textContent = title;
+    document.getElementById('update-modal-loading').style.display = 'block';
+    document.getElementById('update-modal-loading').textContent = 'Loading season data...';
+    document.getElementById('update-modal-content').style.display = 'none';
+    document.getElementById('update-modal-error').style.display = 'none';
+    document.getElementById('update-modal').style.display = 'flex';
+
+    try {
+        const res = await fetch(`/api/series-status?imdb_id=${imdbId}`);
+        const data = await res.json();
+
+        if (data.error || !data.found) {
+            document.getElementById('update-modal-loading').style.display = 'none';
+            document.getElementById('update-modal-error').style.display = 'block';
+            document.getElementById('update-modal-error').textContent = 
+                data.error || `Series not found in Sonarr. It may have been added with a different IMDB ID (${imdbId}).`;
+            return;
+        }
+
+        originalSeasons = data.seasons;
+
+        const toggle = document.getElementById('monitor-new-toggle');
+        toggle.checked = data.monitored;
+        updateToggleUI(data.monitored);
+        toggle.onchange = () => updateToggleUI(toggle.checked);
+
+        const list = document.getElementById('update-season-list');
+        list.innerHTML = '';
+        data.seasons.forEach(s => {
+            const label = document.createElement('label');
+            const isMonitored = s.monitored;
+            label.style.cssText = `display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.75rem; background:var(--bg3); border:1px solid ${isMonitored ? 'var(--accent)' : 'var(--border)'}; border-radius:6px; cursor:pointer; font-size:0.82rem; transition:border-color 0.15s;`;
+            label.innerHTML = `
+                <input type="checkbox" value="${s.number}" ${isMonitored ? 'checked' : ''} style="accent-color:var(--accent);"
+                    onchange="this.closest('label').style.borderColor = this.checked ? 'var(--accent)' : 'var(--border)'">
+                Season ${s.number}
+                ${isMonitored ? '<span style="font-size:0.65rem; color:var(--accent); margin-left:auto">on</span>' : ''}
+            `;
+            list.appendChild(label);
+        });
+
+        document.getElementById('update-modal-loading').style.display = 'none';
+        document.getElementById('update-modal-content').style.display = 'flex';
+
+    } catch(err) {
+        document.getElementById('update-modal-loading').style.display = 'none';
+        document.getElementById('update-modal-error').style.display = 'block';
+        document.getElementById('update-modal-error').textContent = 'Failed to load season data.';
+    }
+}
+
+function updateToggleUI(checked) {
+    document.getElementById('toggle-track').style.background = checked ? 'var(--accent)' : 'var(--border)';
+    document.getElementById('toggle-thumb').style.transform = checked ? 'translateX(20px)' : 'translateX(0)';
+}
+
+function closeUpdateModal() {
+    document.getElementById('update-modal').style.display = 'none';
+    currentUpdateImdbId = null;
+}
+
+async function confirmUpdate() {
+    const btn = document.getElementById('update-confirm-btn');
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    const monitorNew = document.getElementById('monitor-new-toggle').checked;
+    const allSeasons = [...document.querySelectorAll('#update-season-list input[type="checkbox"]')].map(i => parseInt(i.value));
+    const checkedSeasons = [...document.querySelectorAll('#update-season-list input:checked')].map(i => parseInt(i.value));
+    const previouslyMonitored = originalSeasons.filter(s => s.monitored).map(s => s.number);
+    const newlyAdded = checkedSeasons.filter(n => !previouslyMonitored.includes(n));
+
+    // If all seasons selected, use "all" so the pill shows "All"
+    const seasonsValue = checkedSeasons.length === allSeasons.length ? 'all' : JSON.stringify(checkedSeasons);
+
+    try {
+        const res = await fetch('/api/update-series', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                imdb_id: currentUpdateImdbId,
+                request_id: currentUpdateRequestId,
+                seasons: seasonsValue,
+                monitor_new: monitorNew,
+                search_new: newlyAdded
+            })
+        });
+        const data = await res.json();
+        if (data.error) {
+            alert('Error: ' + data.error);
+            btn.textContent = 'Save Changes';
+            btn.disabled = false;
+        } else {
+            closeUpdateModal();
+            window.location.reload();
+        }
+    } catch(err) {
+        alert('Something went wrong. Please try again.');
+    }
+
+    btn.textContent = 'Save Changes';
+    btn.disabled = false;
+}
+
+document.getElementById('update-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeUpdateModal();
+});
+</script>
+
+{% endblock %}

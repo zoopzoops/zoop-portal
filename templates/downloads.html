@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Zoop Portal — Downloads{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .download-card {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        transition: border-color 0.15s;
+    }
+
+    .download-card:hover {
+        border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .download-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.6rem;
+        gap: 1rem;
+    }
+
+    .download-name {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+    }
+
+    .download-meta {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-shrink: 0;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .progress-bar-container {
+        height: 4px;
+        background: var(--bg3);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-bar {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.5s ease;
+    }
+
+    .progress-downloading { background: var(--accent); }
+    .progress-seeding { background: var(--success); }
+    .progress-paused { background: var(--text-muted); }
+    .progress-error { background: var(--danger); }
+    .progress-complete { background: var(--success); }
+
+    .download-footer {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+
+    .download-footer span {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+    }
+
+    .dot-downloading { background: var(--accent); animation: pulse 1.5s infinite; }
+    .dot-seeding { background: var(--success); }
+    .dot-paused { background: var(--text-muted); }
+    .dot-error { background: var(--danger); }
+    .dot-complete { background: var(--success); }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .empty-state p {
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+
+    .refresh-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+
+    .refresh-indicator {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .refresh-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: pulse 2s infinite;
+    }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 0.3rem;
+    }
+
+    .stat-value {
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 1.5rem;
+        letter-spacing: -0.03em;
+    }
+
+    @media (max-width: 768px) {
+        .stats-row { grid-template-columns: repeat(2, 1fr); }
+        .download-meta { display: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Downloads</h1>
+    <p>Live queue from qBittorrent</p>
+</div>
+
+<div class="stats-row" id="stats-row">
+    <div class="stat-card">
+        <div class="stat-label">Total</div>
+        <div class="stat-value" id="stat-total">—</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Downloading</div>
+        <div class="stat-value" id="stat-downloading" style="color: var(--accent)">—</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total Speed</div>
+        <div class="stat-value" id="stat-speed" style="font-size:1.1rem; padding-top:0.2rem">—</div>
+    </div>
+</div>
+
+<div class="refresh-bar">
+    <div style="display:flex; gap:0.5rem; align-items:center; flex:1;">
+        <input type="text" id="dl-search" placeholder="Search downloads..."
+            style="background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:0.45rem 0.8rem; color:var(--text); font-family:'DM Mono',monospace; font-size:0.82rem; outline:none; width:280px;"
+            oninput="filterDownloads()">
+    </div>
+    <div class="refresh-indicator">
+        <span class="refresh-dot"></span>
+        <span id="last-updated">Connecting...</span>
+    </div>
+</div>
+
+<div id="downloads-list"></div>
+
+<script>
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatSpeed(bytesPerSec) {
+    return formatBytes(bytesPerSec) + '/s';
+}
+
+function formatEta(seconds) {
+    if (seconds < 0 || seconds > 8640000) return '∞';
+    if (seconds === 0) return 'Done';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+}
+
+function getStateInfo(state) {
+    const states = {
+        'downloading': { label: 'Downloading', dot: 'dot-downloading', bar: 'progress-downloading' },
+        'stalledDL': { label: 'Stalled', dot: 'dot-paused', bar: 'progress-paused' },
+        'seeding': { label: 'Seeding', dot: 'dot-seeding', bar: 'progress-seeding' },
+        'stalledUP': { label: 'Seeding', dot: 'dot-seeding', bar: 'progress-seeding' },
+        'pausedDL': { label: 'Paused', dot: 'dot-paused', bar: 'progress-paused' },
+        'pausedUP': { label: 'Complete', dot: 'dot-complete', bar: 'progress-complete' },
+        'queuedDL': { label: 'Queued', dot: 'dot-paused', bar: 'progress-paused' },
+        'queuedUP': { label: 'Queued', dot: 'dot-paused', bar: 'progress-paused' },
+        'error': { label: 'Error', dot: 'dot-error', bar: 'progress-error' },
+        'missingFiles': { label: 'Missing Files', dot: 'dot-error', bar: 'progress-error' },
+        'checkingDL': { label: 'Checking', dot: 'dot-downloading', bar: 'progress-downloading' },
+        'checkingUP': { label: 'Checking', dot: 'dot-seeding', bar: 'progress-seeding' },
+    };
+    return states[state] || { label: state, dot: 'dot-paused', bar: 'progress-paused' };
+}
+
+async function fetchDownloads() {
+    try {
+        const res = await fetch('/api/downloads');
+        const data = await res.json();
+
+        if (data.error) {
+            document.getElementById('downloads-list').innerHTML = `
+                <div class="empty-state">
+                    <div style="font-size:2rem">⚠️</div>
+                    <p>Could not connect to qBittorrent</p>
+                </div>`;
+            return;
+        }
+
+        const torrents = data.torrents || [];
+
+        // Update stats
+        const downloading = torrents.filter(t => t.state === 'downloading' || t.state === 'stalledDL').length;
+        const seedingCount = torrents.filter(t => t.state === 'seeding' || t.state === 'stalledUP').length;
+        const totalSpeed = torrents.reduce((sum, t) => sum + (t.dlspeed || 0), 0);
+
+        document.getElementById('stat-total').textContent = torrents.length;
+        document.getElementById('stat-downloading').textContent = downloading;
+        document.getElementById('stat-speed').textContent = formatSpeed(totalSpeed);
+
+        // Update last refreshed
+        const now = new Date();
+        document.getElementById('last-updated').textContent = `Updated ${now.toLocaleTimeString()}`;
+
+        // Filter out seeding torrents
+        const SEEDING_STATES = ['seeding', 'stalledUP', 'queuedUP', 'pausedUP', 'checkingUP', 'forcedUP'];
+        const visible = torrents.filter(t => !SEEDING_STATES.includes(t.state));
+
+        if (visible.length === 0) {
+            const msg = seedingCount > 0
+                ? `No active downloads. ${seedingCount} torrent${seedingCount > 1 ? 's' : ''} seeding in background.`
+                : 'No active downloads';
+            document.getElementById('downloads-list').innerHTML = `
+                <div class="empty-state">
+                    <p>${msg}</p>
+                </div>`;
+            return;
+        }
+
+        visible.sort((a, b) => {
+            const order = { downloading: 0, stalledDL: 1, pausedDL: 2, error: 3 };
+            return (order[a.state] ?? 4) - (order[b.state] ?? 4);
+        });
+
+        const html = visible.map(t => {
+            const progress = (t.progress * 100).toFixed(1);
+            const stateInfo = getStateInfo(t.state);
+            const category = t.category || 'none';
+
+            return `
+            <div class="download-card">
+                <div class="download-header">
+                    <div class="download-name" title="${t.name}">${t.name}</div>
+                    <div class="download-meta">
+                        <span class="badge badge-${category === 'radarr' ? 'movie' : category === 'sonarr' ? 'show' : 'pending'}">${category}</span>
+                        <span><span class="status-dot ${stateInfo.dot}"></span> ${stateInfo.label}</span>
+                        <span>${progress}%</span>
+                    </div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar ${stateInfo.bar}" style="width: ${progress}%"></div>
+                </div>
+                <div class="download-footer">
+                    <span>↓ ${formatSpeed(t.dlspeed || 0)}</span>
+                    <span>↑ ${formatSpeed(t.upspeed || 0)}</span>
+                    <span>📦 ${formatBytes(t.size || 0)}</span>
+                    <span>🌱 ${t.num_seeds || 0} seeds</span>
+                    <span>⏱ ETA: ${formatEta(t.eta)}</span>
+                    <span>⚖️ Ratio: ${(t.ratio || 0).toFixed(2)}</span>
+                </div>
+            </div>`;
+        }).join('');
+
+        document.getElementById('downloads-list').innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// Initial fetch and auto-refresh
+fetchDownloads();
+setInterval(fetchDownloads, 3000);
+</script>
+{% endblock %}

@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Zoop Portal — What's New{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .changelog { max-width: 800px; }
+
+    .release { margin-bottom: 1rem; overflow: hidden; }
+
+    .release-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: pointer;
+        user-select: none;
+        padding: 1rem 1.5rem;
+        margin: -1.5rem -1.5rem 0 -1.5rem;
+        border-radius: 10px;
+        transition: background 0.15s;
+    }
+
+    .release-header:hover { background: rgba(255,255,255,0.02); }
+
+    .release-version {
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 1.1rem;
+        color: var(--accent);
+        letter-spacing: -0.02em;
+    }
+
+    .release-date { font-size: 0.75rem; color: var(--text-muted); }
+
+    .release-tag {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 4px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .release-chevron {
+        margin-left: auto;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        transition: transform 0.2s;
+        flex-shrink: 0;
+    }
+
+    .release.open .release-chevron { transform: rotate(180deg); }
+
+    .release-body {
+        display: none;
+        padding-top: 1.25rem;
+        margin-top: 1rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .release.open .release-body { display: block; }
+
+    .change-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    .change-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        font-size: 0.85rem;
+        color: var(--text-dim);
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(30,45,74,0.4);
+    }
+
+    .change-item:last-child { border-bottom: none; }
+
+    .change-tag {
+        flex-shrink: 0;
+        font-size: 0.65rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 3px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-top: 0.1rem;
+    }
+
+    .change-text { line-height: 1.5; }
+
+    .tag-n { background:rgba(16,185,129,0.1); color:var(--success); border:1px solid rgba(16,185,129,0.2); }
+    .tag-i { background:rgba(59,130,246,0.1); color:var(--accent); border:1px solid rgba(59,130,246,0.2); }
+    .tag-f { background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.2); }
+    .tag-s { background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>What's New</h1>
+    <p>Latest updates and changes to Zoop Portal</p>
+</div>
+
+<div class="changelog">
+   
+    <div class="card release open">
+        <div class="release-header" onclick="toggleRelease(this)">
+            <span class="release-version">v1.5.1</span>
+            <span class="release-date">May 06, 2026</span>
+            <span class="release-tag" style="background:rgba(16,185,129,0.1);color:var(--success);border:1px solid rgba(16,185,129,0.2)">Latest</span>
+            <span class="release-chevron">▼</span>
+        </div>
+        <div class="release-body">
+            <ul class="change-list">
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Batch Approvals</strong> — admins can now approve requests in bulk.</span></li>
+                <li class="change-item"><span class="change-tag tag-f">Fixed</span><span class="change-text"><strong>Manual Approval Bug</strong> — admins can approve shows again.</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card release">
+        <div class="release-header" onclick="toggleRelease(this)">
+            <span class="release-version">v1.5</span>
+            <span class="release-date">April 26, 2026</span>
+            <span class="release-chevron">▼</span>
+        </div>
+        <div class="release-body">
+            <ul class="change-list">
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Season Selection</strong> — when requesting a TV show, a modal lets you choose which seasons to download, or select New Episodes Only</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Manage Seasons</strong> — approved shows have a Manage button to add/remove seasons, toggle new episode monitoring, and trigger searches</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Search & Filter on Requests</strong> — filter by title, username, type or status by clicking the stat cards</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Search on Downloads</strong> — filter active downloads by name in real time</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Already Exists Check</strong> — submitting a request for something already in the library now shows a clear error</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>What's New page</strong> — you're looking at it!</span></li>
+                <li class="change-item"><span class="change-tag tag-i">Improved</span><span class="change-text"><strong>Seasons display</strong> — shown as a compact expandable pill in the requests table</span></li>
+                <li class="change-item"><span class="change-tag tag-f">Fixed</span><span class="change-text"><strong>Special characters in titles</strong> — apostrophes and colons no longer break the Manage button</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card release">
+        <div class="release-header" onclick="toggleRelease(this)">
+            <span class="release-version">v1.4</span>
+            <span class="release-date">April 24, 2026</span>
+            <span class="release-chevron">▼</span>
+        </div>
+        <div class="release-body">
+            <ul class="change-list">
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Per-user Auto-Approve</strong> — admins can enable auto-approve per user with individual daily limits</span></li>
+                <li class="change-item"><span class="change-tag tag-s">Security</span><span class="change-text"><strong>Login Attempt Locking</strong> — accounts disabled after 5 failed attempts, counter resets on success</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Favicon</strong> — Zoop Portal now has a browser tab icon</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card release">
+        <div class="release-header" onclick="toggleRelease(this)">
+            <span class="release-version">v1.3</span>
+            <span class="release-date">April 23, 2026</span>
+            <span class="release-chevron">▼</span>
+        </div>
+        <div class="release-body">
+            <ul class="change-list">
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>High Contrast Mode</strong> — toggle in the nav bar, preference saved per account</span></li>
+                <li class="change-item"><span class="change-tag tag-i">Improved</span><span class="change-text"><strong>Downloads page cleanup</strong> — seeding torrents and unnecessary stats removed</span></li>
+                <li class="change-item"><span class="change-tag tag-i">Improved</span><span class="change-text"><strong>Dashboard cleanup</strong> — removed the Available stat counter</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card release">
+        <div class="release-header" onclick="toggleRelease(this)">
+            <span class="release-version">v1.2</span>
+            <span class="release-date">April 23, 2026</span>
+            <span class="release-chevron">▼</span>
+        </div>
+        <div class="release-body">
+            <ul class="change-list">
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Live Downloads page</strong> — progress bars, speed and ETA, auto-refreshes every 3 seconds</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Admin notifications</strong> — browser notifications when new users register or requests come in</span></li>
+                <li class="change-item"><span class="change-tag tag-s">Security</span><span class="change-text"><strong>Session kick</strong> — disabled accounts are immediately logged out</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>User management</strong> — admins can disable, enable, reset passwords and delete accounts</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card release">
+        <div class="release-header" onclick="toggleRelease(this)">
+            <span class="release-version">v1.1</span>
+            <span class="release-date">April 23, 2026</span>
+            <span class="release-chevron">▼</span>
+        </div>
+        <div class="release-body">
+            <ul class="change-list">
+                <li class="change-item"><span class="change-tag tag-i">Improved</span><span class="change-text"><strong>Auto media type detection</strong> — no more selecting Movie or Show manually</span></li>
+                <li class="change-item"><span class="change-tag tag-s">Security</span><span class="change-text"><strong>Password requirements</strong> — minimum 12 characters with uppercase, lowercase, number and symbol</span></li>
+                <li class="change-item"><span class="change-tag tag-i">Improved</span><span class="change-text"><strong>Duplicate detection</strong> — submitting the same IMDB link twice now shows a clear error</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card release">
+        <div class="release-header" onclick="toggleRelease(this)">
+            <span class="release-version">v1.0</span>
+            <span class="release-date">April 23, 2026</span>
+            <span class="release-tag" style="background:rgba(99,102,241,0.1);color:var(--accent2);border:1px solid rgba(99,102,241,0.2)">Initial Release</span>
+            <span class="release-chevron">▼</span>
+        </div>
+        <div class="release-body">
+            <ul class="change-list">
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Zoop Portal launched</strong> — media request system connected to Radarr and Sonarr</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>User accounts</strong> — register and request access, admin approves before login</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Admin panel</strong> — approve/reject user registrations and media requests</span></li>
+                <li class="change-item"><span class="change-tag tag-n">New</span><span class="change-text"><strong>Publicly accessible</strong> — hosted at portal.weeshnaw.com via Cloudflare Tunnel</span></li>
+            </ul>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function toggleRelease(header) {
+    header.closest('.release').classList.toggle('open');
+}
+</script>
+{% endblock %}
