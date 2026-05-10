@@ -1,0 +1,34 @@
+services:
+  zoop-portal:
+    image: zoopzoop/zoop-portal:latest
+    # Or build from source:
+    # build: .
+    container_name: zoop-portal
+    ports:
+      - "8888:8888"
+    environment:
+      # Radarr
+      - RADARR_URL=http://radarr:7878
+      - RADARR_API_KEY=your_radarr_api_key
+      - RADARR_QUALITY_PROFILE_ID=1
+      - RADARR_ROOT_FOLDER=/movies
+
+      # Sonarr
+      - SONARR_URL=http://sonarr:8989
+      - SONARR_API_KEY=your_sonarr_api_key
+      - SONARR_QUALITY_PROFILE_ID=1
+      - SONARR_ROOT_FOLDER=/tv
+
+      # qBittorrent (optional, for downloads page)
+      - QBIT_USERNAME=admin
+      - QBIT_PASSWORD=your_qbit_password
+
+      # Security — CHANGE THESE
+      - SECRET_KEY=change-this-to-a-long-random-string
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=change-this-password
+    volumes:
+      - ./data:/config
+      - ./templates:/app/templates
+      - ./static:/app/static
+    restart: unless-stopped

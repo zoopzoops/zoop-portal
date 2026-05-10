@@ -1,0 +1,22 @@
+# Data
+data/
+*.db
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
