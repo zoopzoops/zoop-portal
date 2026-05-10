@@ -100,7 +100,7 @@ Use the `id` field from the profile you want.
 
 ## Exposing Publicly
 
-We recommend using [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) to expose Zoop Portal without opening ports on your router.
+I recommend using [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) to expose Zoop Portal without opening ports on your router.
 
 ## Building from Source
 
@@ -118,7 +118,3 @@ docker compose up -d
 ```
 
 The SQLite database is stored in `/config` and persists across updates.
-
-## License
-
-MIT
